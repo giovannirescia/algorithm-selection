@@ -66,8 +66,19 @@ def generate_features(df):
 
 def run(fpath):
     now = datetime.now()
-    timestamp = '{0}/{1}/{2}/{0}{1}{2}{3}{4}_'.format(now.year, now.month, now.day, now.hour, now.minute)
+    timestamp_dir = '{0}/{1}/{2}/'.format(now.year, now.month, now.day)
+    timestamp_file = '{0}{1}{2}{3}{4}_'.format(now.year, now.month, now.day, now.hour, now.minute)
     fname = fpath.split('/')[-1].split('.')[0].lower()
+
+    LOGS_TRAIN = os.path.join('logs/train', timestamp_dir)
+    LOGS_DATA = os.path.join('logs/data', timestamp_dir)
+    PLOTS = os.path.join('plots', timestamp_dir)
+    MODELS = os.path.join('models', timestamp_dir)
+
+    os.makedirs(LOGS_TRAIN, exist_ok=True)
+    os.makedirs(LOGS_DATA, exist_ok=True)
+    os.makedirs(PLOTS, exist_ok=True)
+    os.makedirs(MODELS, exist_ok=True)
 
     print(f"Loading file {fpath}")
     df = pd.read_csv(fpath)
@@ -76,7 +87,7 @@ def run(fpath):
     # sources with less than 50 entries are not used
     df_ignore = count_df[count_df['timestamp'] < 50]
     # save ignored sources
-    with open(f'logs/data/{fname}_ignored_sources.txt', 'w') as fp:
+    with open(os.path.join(LOGS_DATA, timestamp_file +  f'{fname}_ignored_sources.txt'), 'w') as fp:
         for source in df_ignore['source_name'].values:
             fp.write(source)
             fp.write('\n')
@@ -110,7 +121,7 @@ def run(fpath):
                 le.fit(y)
                 y = pd.Series(le.transform(y))
                 encoder_dict[source] = {k: v for k, v in zip(y, aux_df['value'])}
-                with open(os.path.join('logs/train', source + '_' + id_ + '_encoder.json'), 'w') as fp:
+                with open(os.path.join(LOGS_TRAIN, timestamp_file + source + '_' + id_ + '_encoder.json'), 'w') as fp:
                     json.dump(encoder_dict, fp)
 
             total_examples = len(y)
@@ -141,21 +152,21 @@ def run(fpath):
             best_model = get_best_model(res, model_type)
             model = classifiers[best_model[0]]
             # save the best model for this (source, id) data
-            with open(os.path.join('models', fname + '_' + source.replace(' ', '_') + '_' + id_ + '.model'), 'wb') as fp:
+            with open(os.path.join(MODELS, timestamp_file + fname + '_' + source.replace(' ', '_') + '_' + id_ + '.model'), 'wb') as fp:
                 pickle.dump(model, fp)
             # logs for each model trained on this (source, id) data
-            with open(os.path.join('logs/train', fname + '_' + source.replace(' ', '_') + '_' + id_ + '_models.logs'), 'w') as fp:
+            with open(os.path.join(LOGS_TRAIN, timestamp_file + fname + '_' + source.replace(' ', '_') + '_' + id_ + '_models.logs'), 'w') as fp:
                 json.dump(res, fp)
             # save the plot of the ground truth values vs the model predictions
             h = pd.to_datetime(pd.DataFrame(X_test[:, :-1], columns=['year', 'month', 'day', 'hour', 'minute', 'second']))
             plt.plot(h, y_test, 'r|', h, preds, 'g_', markersize=11)
             plt.gcf().autofmt_xdate()
             plt.gca().legend(('ground truth', 'prediction'))
-            plt.savefig(os.path.join('plots', fname + '_' + source.replace(' ', '_') + '_' + id_ + '.png'))
+            plt.savefig(os.path.join(PLOTS, timestamp_file + fname + '_' + source.replace(' ', '_') + '_' + id_ + '.png'))
             plt.clf()
 
     # save the general statistics    
-    with open(os.path.join('logs/train', 'statistics.json'), 'w') as fp:
+    with open(os.path.join(LOGS_TRAIN, timestamp_file + 'statistics.json'), 'w') as fp:
         json.dump(general_statistics, fp)
 
 
@@ -165,10 +176,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     fname = args.f
-
-    os.makedirs('logs/train', exist_ok=True)
-    os.makedirs('models', exist_ok=True)
-    os.makedirs('plots', exist_ok=True)
-    os.makedirs('logs/data/', exist_ok=True)
 
     run(fname)
