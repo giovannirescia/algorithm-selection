@@ -48,7 +48,8 @@ def clf_report(ground_truth, preds, model_type):
     else:
         mse = mean_squared_error(ground_truth, preds)
         return {'mse': mse}
-        
+
+
 def get_best_model(res, model_type):
     """
     Returns the best model according to a metric
@@ -60,11 +61,15 @@ def get_best_model(res, model_type):
 
     return best
 
+
 def generate_features(df):
+    """
+    Generate features from timestamps
+    """
     return np.array([np.array(xi) for xi in pd.to_datetime(df).apply(lambda x: [x.year, x.month, x.day, x.hour, x.minute, x.second, x.weekday()])])
 
 
-def run(fpath):
+def train(fpath):
     now = datetime.now()
     timestamp_dir = '{0}/{1}/{2}/'.format(now.year, now.month, now.day)
     timestamp_file = '{0}{1}{2}{3}{4}_'.format(now.year, now.month, now.day, now.hour, now.minute)
@@ -102,10 +107,10 @@ def run(fpath):
     le = LabelEncoder()
 
     np.random.seed(8821)
-    for source in sources[:25]:
+    for source in sources:
         # separate each source by id also
         ids = df[df['source_name'] == source]['id'].unique()
-        for idx, id_ in enumerate(ids[:5], start=1):
+        for idx, id_ in enumerate(ids, start=1):
             if idx % 25 == 0 or idx == len(ids):
                 print(f"{idx} / {len(ids)}")
             aux_df = df[(df['source_name'] == source) & (df['id'] == id_)]
@@ -152,7 +157,7 @@ def run(fpath):
             best_model = get_best_model(res, model_type)
             model = classifiers[best_model[0]]
             # save the best model for this (source, id) data
-            with open(os.path.join(MODELS, timestamp_file + fname + '_' + source.replace(' ', '_') + '_' + id_ + '.model'), 'wb') as fp:
+            with open(os.path.join(MODELS, fname + '_' + source.replace(' ', '_') + '_' + id_ + '.model'), 'wb') as fp:
                 pickle.dump(model, fp)
             # logs for each model trained on this (source, id) data
             with open(os.path.join(LOGS_TRAIN, timestamp_file + fname + '_' + source.replace(' ', '_') + '_' + id_ + '_models.logs'), 'w') as fp:
@@ -177,4 +182,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     fname = args.f
 
-    run(fname)
+    train(fname)
