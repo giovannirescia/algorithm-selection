@@ -5,6 +5,7 @@ import pandas as pd
 import pickle
 import numpy as np
 import os
+import glob
 
 
 def generate_features(points):
@@ -44,6 +45,7 @@ def get_models_list(models_path, filename, sources=None):
         all_sources = False
 
     models = os.listdir(models_path)
+    models = filter(lambda x: x.endswith('.model'), models)
     res = []
     sources_res = []
     for model in models:
@@ -63,16 +65,23 @@ def get_predictions(models, points):
     points_df = pd.to_datetime(pd.DataFrame(points[:, :-1], columns=['year', 'month', 'day', 'hour', 'minute', 'second'])).to_frame('timestamp')
 
     res = pd.DataFrame(columns=['source', 'id', 'timestamp', 'predictions'])
-
     for model_path in models:
+        has_encoder = False
         aux = model_path.split('_')
         dataset, source, id_ = aux[0], ' '.join(aux[1:-1]), aux[-1].split('.')[0]
         aux = [(source, id_)] * points.shape[0]
         with open(model_path, 'rb') as fp:
             model = pickle.load(fp)
 
+        if os.path.exists(model_path.replace('.model', '_encoder.json')):
+            has_encoder = True
+            with open(model_path.replace('.model', '_encoder.json')) as fp:
+                encoder = {int(k): v for k, v in json.load(fp).items()}
+
         preds = model.predict(points)
         aux_df = points_df.join(pd.DataFrame(preds, columns=['predictions']))
+        if has_encoder:
+            aux_df['predictions'] = aux_df['predictions'].replace(encoder)
         aux_df.insert(0, column='source', value=source)
         aux_df.insert(1, column='id', value=id_)
         res = res.append(aux_df, ignore_index=True)

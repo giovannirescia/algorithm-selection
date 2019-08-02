@@ -102,7 +102,6 @@ def train(fpath):
     sources = df['source_name'].unique()
 
     general_statistics = {'number of sources': len(sources)}
-    encoder_dict = {}
     # to categorical data
     le = LabelEncoder()
 
@@ -120,19 +119,19 @@ def train(fpath):
             if len(y.unique()) < 2:
                 continue
             try:
-                y = y.astype(int)
+                y = y.astype(float)
             except:
                 # string data to categorical
                 le.fit(y)
                 y = pd.Series(le.transform(y))
-                encoder_dict[source] = {k: v for k, v in zip(y, aux_df['value'])}
-                with open(os.path.join(LOGS_TRAIN, timestamp_file + source + '_' + id_ + '_encoder.json'), 'w') as fp:
+                encoder_dict = {k: v for k, v in zip(y, aux_df['value'])}
+                with open(os.path.join(MODELS, fname + '_' + source + '_' + id_ + '_encoder.json'), 'w') as fp:
                     json.dump(encoder_dict, fp)
 
             total_examples = len(y)
             unique_examples_ratio = len(y.unique()) / total_examples
             # check the type of models to train
-            if unique_examples_ratio > 0.9:
+            if unique_examples_ratio > 0.8:
                 model_type = 'regression'
             else:
                 model_type = 'classification'
