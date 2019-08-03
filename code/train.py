@@ -26,7 +26,7 @@ matplotlib.rcParams['legend.fontsize'] = 13
 matplotlib.rcParams['legend.handlelength'] = 1
 matplotlib.rcParams['legend.markerscale'] = 1
 
-
+# the list of classifiers for the dataset, divided by "classification" and "regression"
 classifiers_dict = {'classification': {'logistic_regression': LogisticRegression(multi_class='auto', solver='newton-cg'),
                                        'gaussian': GaussianNB(),
                                        'svm': SVC(gamma='auto'),
@@ -37,15 +37,21 @@ classifiers_dict = {'classification': {'logistic_regression': LogisticRegression
 
 
 def clf_report(ground_truth, preds, model_type):
+    # depending on the problem we are modeling,
+    # we use different metrics to measure the performance
     if model_type == 'classification':
+        # accuracy
         acc = accuracy_score(ground_truth, preds)
+        # precision
         precision = precision_score(ground_truth, preds, average='macro')
+        # f1
         f1 = f1_score(ground_truth, preds, average='macro')
 
         return {'accuracy': acc,
                 'precision': precision,
                 'f1': f1}
     else:
+        # squared error
         mse = mean_squared_error(ground_truth, preds)
         return {'mse': mse}
 
@@ -55,7 +61,9 @@ def get_best_model(res, model_type):
     Returns the best model according to a metric
     """
     if model_type == 'classification':
+        # the best classification model according to f1 metric
         best = sorted([(k, v['f1']) for k, v in res.items()], key=lambda x: -x[1])[0]
+        # the best regression model according to mse metric
     elif model_type == 'regression':
         best = sorted([(k, v['mse']) for k, v in res.items()], key=lambda x: x[1])[0]
 
@@ -70,24 +78,27 @@ def generate_features(df):
 
 
 def train(fpath):
+    # obtain the date to create the directories
     now = datetime.now()
     timestamp_dir = '{0}/{1}/{2}/'.format(now.year, now.month, now.day)
     timestamp_file = '{0}{1}{2}{3}{4}_'.format(now.year, now.month, now.day, now.hour, now.minute)
+    # dataset name
     fname = fpath.split('/')[-1].split('.')[0].lower()
 
     LOGS_TRAIN = os.path.join('logs/train', timestamp_dir)
     LOGS_DATA = os.path.join('logs/data', timestamp_dir)
     PLOTS = os.path.join('plots', timestamp_dir)
     MODELS = os.path.join('models', timestamp_dir)
-
+    # create directories
     os.makedirs(LOGS_TRAIN, exist_ok=True)
     os.makedirs(LOGS_DATA, exist_ok=True)
     os.makedirs(PLOTS, exist_ok=True)
     os.makedirs(MODELS, exist_ok=True)
 
     print(f"Loading file {fpath}")
+    # load dataset
     df = pd.read_csv(fpath)
-
+    # count examples per source
     count_df = df.groupby(by='source_name').count().reset_index()[['source_name', 'timestamp']]
     # sources with less than 50 entries are not used
     df_ignore = count_df[count_df['timestamp'] < 50]
@@ -99,6 +110,7 @@ def train(fpath):
 
     # keep the relevant sources
     df = df[~df['source_name'].isin(df_ignore['source_name'])][['id', 'source_name', 'value', 'timestamp']]
+    # list of sources to work with
     sources = df['source_name'].unique()
 
     general_statistics = {'number of sources': len(sources)}
@@ -112,6 +124,7 @@ def train(fpath):
         for idx, id_ in enumerate(ids, start=1):
             if idx % 25 == 0 or idx == len(ids):
                 print(f"{idx} / {len(ids)}")
+            # separate by source and id
             aux_df = df[(df['source_name'] == source) & (df['id'] == id_)]
             # feature engineering
             X, y = generate_features(aux_df['timestamp']), aux_df['value']
@@ -119,12 +132,15 @@ def train(fpath):
             if len(y.unique()) < 2:
                 continue
             try:
+                # transform target column to float type
                 y = y.astype(float)
             except:
                 # string data to categorical
                 le.fit(y)
                 y = pd.Series(le.transform(y))
+                # encode things like "open" to 0 and "close" to 1
                 encoder_dict = {k: v for k, v in zip(y, aux_df['value'])}
+                # save encoder dict
                 with open(os.path.join(MODELS, fname + '_' + source + '_' + id_ + '_encoder.json'), 'w') as fp:
                     json.dump(encoder_dict, fp)
 
@@ -137,23 +153,28 @@ def train(fpath):
                 model_type = 'classification'
             # train and test data splitting
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=31)
-
-            general_statistics[source] = {'train size': len(X_train),
-                                          'test size': len(X_test),
-                                          'model type': model_type}
+            
+            general_statistics[source + '_' + id_] = {'train size': len(X_train),
+                                                      'test size': len(X_test),
+                                                      'model type': model_type}
             # list of classifiers to train for this source and id
             classifiers = classifiers_dict[model_type]
             res = {}
             for name, clf in classifiers.items():
                 try:
+                    # train the classifier
                     clf.fit(X_train, y_train)
                 except:
                     continue
+                # get predictions
                 preds = clf.predict(X_test)
+                # get performance
                 report = clf_report(y_test, preds, model_type)
+                # candidates
                 res[name] = report
             # select the best model according to a metric: f1 for classification and mse for regression
             best_model = get_best_model(res, model_type)
+            # get the model to save to disk
             model = classifiers[best_model[0]]
             # save the best model for this (source, id) data
             with open(os.path.join(MODELS, fname + '_' + source.replace(' ', '_') + '_' + id_ + '.model'), 'wb') as fp:

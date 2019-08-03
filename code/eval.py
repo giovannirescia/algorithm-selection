@@ -26,6 +26,7 @@ def create_data_points(period, freq):
     total_points = total_minutes / freq
     points = []
 
+    # generate the data points
     for _ in range(int(total_points)):
         now = now + timedelta(minutes = freq)
         points.append(now)
@@ -44,7 +45,9 @@ def get_models_list(models_path, filename, sources=None):
         sources = sources.split(',')
         all_sources = False
 
+    # list all the files in the models directory (this includes the encoders dictionaries)
     models = os.listdir(models_path)
+    # filter just by models
     models = filter(lambda x: x.endswith('.model'), models)
     res = []
     sources_res = []
@@ -52,6 +55,7 @@ def get_models_list(models_path, filename, sources=None):
         aux = model.split('_')
         dataset, source, id_ = aux[0], aux[1:-1], aux[-1].split('.')[0]
         source_name = ' '.join(source)
+        # we keep the models for the specific dataset and sources listed
         if dataset == filename and (all_sources or source_name.lower() in sources):
             res.append(os.path.join(models_path, model))
             sources_res.append(source_name)
@@ -62,40 +66,51 @@ def get_predictions(models, points):
     """
     Get predictions for each model and data point
     """
+    # create the timestamps from the features
     points_df = pd.to_datetime(pd.DataFrame(points[:, :-1], columns=['year', 'month', 'day', 'hour', 'minute', 'second'])).to_frame('timestamp')
 
     res = pd.DataFrame(columns=['source', 'id', 'timestamp', 'predictions'])
     for model_path in models:
         has_encoder = False
+        # separate path into dataset name, source and id
         aux = model_path.split('_')
         dataset, source, id_ = aux[0], ' '.join(aux[1:-1]), aux[-1].split('.')[0]
+        # just values for the source and id columns
         aux = [(source, id_)] * points.shape[0]
+        # load the model
         with open(model_path, 'rb') as fp:
             model = pickle.load(fp)
-
+        # check if this models uses an encoder
         if os.path.exists(model_path.replace('.model', '_encoder.json')):
             has_encoder = True
+            # load encoder dictionary
             with open(model_path.replace('.model', '_encoder.json')) as fp:
                 encoder = {int(k): v for k, v in json.load(fp).items()}
-
+        # get predictions
         preds = model.predict(points)
+        # add the predictions to the data points
         aux_df = points_df.join(pd.DataFrame(preds, columns=['predictions']))
+        # if the model uses an encoder, we map the numerical values to the strings
         if has_encoder:
             aux_df['predictions'] = aux_df['predictions'].replace(encoder)
+        # add source column
         aux_df.insert(0, column='source', value=source)
+        # add id column
         aux_df.insert(1, column='id', value=id_)
+        # append to final data frame and try next model
         res = res.append(aux_df, ignore_index=True)
 
     return res
 
 
 if __name__ == '__main__':
+    # timestamp for filenames and directories
     now = datetime.now()
     timestamp_dir = '{0}/{1}/{2}/'.format(now.year, now.month, now.day)
     timestamp_file = '{0}{1}{2}{3}{4}_'.format(now.year, now.month, now.day, now.hour, now.minute)
     OUTPUT = os.path.join('output', timestamp_dir)
     LOGS = os.path.join('logs/eval', timestamp_dir)
-    
+    # create directories
     os.makedirs(OUTPUT, exist_ok=True)
     os.makedirs(LOGS, exist_ok=True)
 
@@ -113,11 +128,14 @@ if __name__ == '__main__':
     period = args.period
     freq = args.frequency
     models = args.models
-
+    # get the models and sources for this predictions
     models, sources = get_models_list(models, fname, sources)
+    # data points for the predictions
     points = generate_features(create_data_points(period, freq))
+    # generate the predictions
     preds = get_predictions(models, points)
+    # save predictions to disk
     preds.to_csv(os.path.join(OUTPUT, timestamp_file + fname + '_predictions.csv'), index=None)
-
+    # save statistics
     with open(os.path.join(LOGS, timestamp_file + 'statistics.json'), 'w') as fp:
         json.dump({'sources': ', '.join(set(sources)), 'number of data points': len(points), 'frequency': freq, 'period': period}, fp)
