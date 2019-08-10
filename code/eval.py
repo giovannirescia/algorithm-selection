@@ -52,11 +52,11 @@ def get_models_list(models_path, filename, sources=None):
     res = []
     sources_res = []
     for model in models:
-        aux = model.split('_')
+        aux = model.split('-SEP-')
         dataset, source, id_ = aux[0], aux[1:-1], aux[-1].split('.')[0]
         source_name = ' '.join(source)
         # we keep the models for the specific dataset and sources listed
-        if dataset == filename and (all_sources or source_name.lower() in sources):
+        if dataset.lower() == filename.lower() and (all_sources or source_name.lower() in sources):
             res.append(os.path.join(models_path, model))
             sources_res.append(source_name)
     return res, sources_res
@@ -73,7 +73,7 @@ def get_predictions(models, points):
     for model_path in models:
         has_encoder = False
         # separate path into dataset name, source and id
-        aux = model_path.split('_')
+        aux = model_path.split('-SEP-')
         dataset, source, id_ = aux[0], ' '.join(aux[1:-1]), aux[-1].split('.')[0]
         # just values for the source and id columns
         aux = [(source, id_)] * points.shape[0]
@@ -81,10 +81,10 @@ def get_predictions(models, points):
         with open(model_path, 'rb') as fp:
             model = pickle.load(fp)
         # check if this models uses an encoder
-        if os.path.exists(model_path.replace('.model', '_encoder.json')):
+        if os.path.exists(model_path.replace('.model', '-SEP-' + 'encoder.json')):
             has_encoder = True
             # load encoder dictionary
-            with open(model_path.replace('.model', '_encoder.json')) as fp:
+            with open(model_path.replace('.model', '-SEP-' + 'encoder.json')) as fp:
                 encoder = {int(k): v for k, v in json.load(fp).items()}
         # get predictions
         preds = model.predict(points)
@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    fname = args.filename
+    fname = args.filename.split('.')[0]
     sources = args.sources
     period = args.period
     freq = args.frequency

@@ -118,10 +118,10 @@ def train(fpath):
     le = LabelEncoder()
 
     np.random.seed(8821)
-    for source in sources:
+    for source in sources[:10]:
         # separate each source by id also
         ids = df[df['source_name'] == source]['id'].unique()
-        for idx, id_ in enumerate(ids, start=1):
+        for idx, id_ in enumerate(ids[:10], start=1):
             if idx % 25 == 0 or idx == len(ids):
                 print(f"{idx} / {len(ids)}")
             # separate by source and id
@@ -141,7 +141,7 @@ def train(fpath):
                 # encode things like "open" to 0 and "close" to 1
                 encoder_dict = {k: v for k, v in zip(y, aux_df['value'])}
                 # save encoder dict
-                with open(os.path.join(MODELS, fname + '_' + source + '_' + id_ + '_encoder.json'), 'w') as fp:
+                with open(os.path.join(MODELS, fname + '-SEP-' + source + '-SEP-' + id_ + '-SEP-' + 'encoder.json'), 'w') as fp:
                     json.dump(encoder_dict, fp)
 
             total_examples = len(y)
@@ -177,7 +177,7 @@ def train(fpath):
             # get the model to save to disk
             model = classifiers[best_model[0]]
             # save the best model for this (source, id) data
-            with open(os.path.join(MODELS, fname + '_' + source.replace(' ', '_') + '_' + id_ + '.model'), 'wb') as fp:
+            with open(os.path.join(MODELS, fname + '-SEP-' + source.replace(' ', '_') + '-SEP-' + id_ + '.model'), 'wb') as fp:
                 pickle.dump(model, fp)
             # logs for each model trained on this (source, id) data
             with open(os.path.join(LOGS_TRAIN, timestamp_file + fname + '_' + source.replace(' ', '_') + '_' + id_ + '_models.logs'), 'w') as fp:
@@ -197,9 +197,9 @@ def train(fpath):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', default='data/dataset.csv')
+    parser.add_argument('-datapath', default='data/dataset.csv')
 
     args = parser.parse_args()
-    fname = args.f
+    fname = args.datapath
 
     train(fname)
