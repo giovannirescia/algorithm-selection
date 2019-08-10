@@ -18,6 +18,7 @@ from xgboost import XGBRegressor
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 
@@ -25,6 +26,7 @@ matplotlib.rcParams['figure.figsize'] = [25, 25]
 matplotlib.rcParams['legend.fontsize'] = 13
 matplotlib.rcParams['legend.handlelength'] = 1
 matplotlib.rcParams['legend.markerscale'] = 1
+# for changing the marker size, change the 'markersize' param in line 187
 
 # the list of classifiers for the dataset, divided by "classification" and "regression"
 classifiers_dict = {'classification': {'logistic_regression': LogisticRegression(multi_class='auto', solver='newton-cg'),
@@ -117,13 +119,11 @@ def train(fpath):
     # to categorical data
     le = LabelEncoder()
 
-    np.random.seed(8821)
-    for source in sources[:10]:
+    for source in sources:
         # separate each source by id also
         ids = df[df['source_name'] == source]['id'].unique()
-        for idx, id_ in enumerate(ids[:10], start=1):
-            if idx % 25 == 0 or idx == len(ids):
-                print(f"{idx} / {len(ids)}")
+        print(f"Working with source: {source}")
+        for id_ in tqdm(ids):
             # separate by source and id
             aux_df = df[(df['source_name'] == source) & (df['id'] == id_)]
             # feature engineering
@@ -152,7 +152,7 @@ def train(fpath):
             else:
                 model_type = 'classification'
             # train and test data splitting
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=31)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
             
             general_statistics[source + '_' + id_] = {'train size': len(X_train),
                                                       'test size': len(X_test),
@@ -184,12 +184,11 @@ def train(fpath):
                 json.dump(res, fp)
             # save the plot of the ground truth values vs the model predictions
             h = pd.to_datetime(pd.DataFrame(X_test[:, :-1], columns=['year', 'month', 'day', 'hour', 'minute', 'second']))
-            plt.plot(h, y_test, 'r|', h, preds, 'g_', markersize=11)
+            plt.plot(h, y_test, 'r|', h, preds, 'g_', markersize=20)
             plt.gcf().autofmt_xdate()
             plt.gca().legend(('ground truth', 'prediction'))
             plt.savefig(os.path.join(PLOTS, timestamp_file + fname + '_' + source.replace(' ', '_') + '_' + id_ + '.png'))
             plt.clf()
-
     # save the general statistics    
     with open(os.path.join(LOGS_TRAIN, timestamp_file + 'statistics.json'), 'w') as fp:
         json.dump(general_statistics, fp)
