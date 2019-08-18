@@ -23,7 +23,7 @@ def create_data_points(period, freq):
 
     start, end = period.split('-')
     aux = datetime.strptime(start, '%Y,%m,%d')
-    end = datetime.strptime(end, '%Y,%m,%d')
+    end = datetime.strptime(end, '%Y,%m,%d') + timedelta(days=1)
     points = []
 
     # generate the data points
@@ -31,7 +31,7 @@ def create_data_points(period, freq):
         aux = aux + timedelta(minutes = freq)
         points.append(aux)
 
-    return points
+    return points[:-1]
 
 
 def get_models_list(models_path, filename, sources=None):
