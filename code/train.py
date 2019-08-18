@@ -196,7 +196,7 @@ def train(fpath):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-datapath', default='data/dataset.csv')
+    parser.add_argument('-datapath', default='data/dataset.csv', required=True, help="path to the dataset")
 
     args = parser.parse_args()
     fname = args.datapath

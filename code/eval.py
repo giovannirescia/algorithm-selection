@@ -21,15 +21,15 @@ def create_data_points(period, freq):
     of days at a given frequency (in minutes)
     """
 
-    now = datetime.now()
-    total_minutes = 60 * 24 * period
-    total_points = total_minutes / freq
+    start, end = period.split('-')
+    aux = datetime.strptime(start, '%Y,%m,%d')
+    end = datetime.strptime(end, '%Y,%m,%d')
     points = []
 
     # generate the data points
-    for _ in range(int(total_points)):
-        now = now + timedelta(minutes = freq)
-        points.append(now)
+    while aux < end:
+        aux = aux + timedelta(minutes = freq)
+        points.append(aux)
 
     return points
 
@@ -115,11 +115,11 @@ if __name__ == '__main__':
     os.makedirs(LOGS, exist_ok=True)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--filename', type=str, required=True)
-    parser.add_argument('--models', type=str, required=True)
-    parser.add_argument('--sources', type=str, default=None)
-    parser.add_argument('--period', type=int, required=True)
-    parser.add_argument('--frequency', type=int, required=True)
+    parser.add_argument('--filename', type=str, required=True, help="name of data file running the predictions on")
+    parser.add_argument('--models', type=str, required=True, help="path to the trained models")
+    parser.add_argument('--sources', type=str, default=None, help="list of sources for getting the predictions, separated by commas, eg, “Docks Available,Bikes Available,Commercial Flow - CA” (if no sources are provided, then the predictions will run for every source trained with that dataset)")
+    parser.add_argument('--period', type=str, required=True, help="specifies the period of time for which the predictions are computed, it is a string with the following format: <year_start>,<month_start>,<day_start>-<year_end>,<month_end>,<day_end>")
+    parser.add_argument('--frequency', type=int, required=True, help="distance between data points (measured in minutes)")
 
     args = parser.parse_args()
 
