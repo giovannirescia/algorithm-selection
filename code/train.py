@@ -123,14 +123,11 @@ def train(fpath):
         # separate each source by id also
         ids = df[df['source_name'] == source]['id'].unique()
         print(f"Working with source: {source}")
-        for id_ in tqdm(ids):
+        for id_ in tqdm(ids[:4]):
             # separate by source and id
             aux_df = df[(df['source_name'] == source) & (df['id'] == id_)]
             # feature engineering
             X, y = generate_features(aux_df['timestamp']), aux_df['value']
-            # if target column has only one unique value, it's ignored
-            if len(y.unique()) < 2:
-                continue
             try:
                 # transform target column to float type
                 y = y.astype(float)
