@@ -85,7 +85,7 @@ def train(fpath):
     timestamp_dir = '{0}/{1}/{2}/'.format(now.year, now.month, now.day)
     timestamp_file = '{0}{1}{2}{3}{4}_'.format(now.year, now.month, now.day, now.hour, now.minute)
     # dataset name
-    fname = fpath.split('/')[-1].split('.')[0].lower()
+    fname = os.path.split(fpath)[-1].split('.')[0].lower()
 
     LOGS_TRAIN = os.path.join('logs/train', timestamp_dir)
     LOGS_DATA = os.path.join('logs/data', timestamp_dir)
