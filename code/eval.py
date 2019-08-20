@@ -28,10 +28,10 @@ def create_data_points(period, freq):
 
     # generate the data points
     while aux < end:
-        aux = aux + timedelta(minutes = freq)
         points.append(aux)
+        aux = aux + timedelta(minutes = freq)
 
-    return points[:-1]
+    return points
 
 
 def get_models_list(models_path, filename, sources=None):
