@@ -123,7 +123,7 @@ def train(fpath):
         # separate each source by id also
         ids = df[df['source_name'] == source]['id'].unique()
         print(f"Working with source: {source}")
-        for id_ in tqdm(ids[:4]):
+        for id_ in tqdm(ids):
             # separate by source and id
             aux_df = df[(df['source_name'] == source) & (df['id'] == id_)]
             # feature engineering
